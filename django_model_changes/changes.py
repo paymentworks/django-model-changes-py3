@@ -1,4 +1,5 @@
 from django.db.models import signals
+import django
 
 from .signals import post_change
 
@@ -116,7 +117,10 @@ class ChangesMixin(object):
 
             # Foreign fields require special care because we don't want to trigger a database query when the field is
             # not yet cached.
-            if field.remote_field:
+            # TODO remove is_django_version_2_or_higher() after monolith is upgraded
+            if is_django_version_2_or_higher() and field.is_relation and field.is_cached(self):
+                fields[field.name] = field.get_cached_value(self)
+            elif field.remote_field:
                 descriptor = self.__class__.__dict__[field.name]
                 if hasattr(self, descriptor.cache_name):
                     fields[field.name] = getattr(self, descriptor.cache_name, None)
@@ -223,3 +227,8 @@ def _post_save(sender, instance, **kwargs):
 
 def _post_delete(sender, instance, **kwargs):
     instance._save_state(new_instance=False, event_type=DELETE)
+
+def is_django_version_2_or_higher():
+    version = django.get_version()
+    major_version = int(version.split('.')[0])
+    return major_version >= 2
