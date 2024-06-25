@@ -118,8 +118,9 @@ class ChangesMixin(object):
             # Foreign fields require special care because we don't want to trigger a database query when the field is
             # not yet cached.
             # TODO remove is_django_version_2_or_higher() after monolith is upgraded
-            if is_django_version_2_or_higher() and field.is_relation and field.is_cached(self):
-                fields[field.name] = field.get_cached_value(self)
+            if is_django_version_2_or_higher():
+                if field.is_relation and field.is_cached(self):
+                    fields[field.name] = field.get_cached_value(self)
             elif field.remote_field:
                 descriptor = self.__class__.__dict__[field.name]
                 if hasattr(self, descriptor.cache_name):
