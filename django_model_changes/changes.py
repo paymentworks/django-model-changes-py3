@@ -121,10 +121,11 @@ class ChangesMixin(object):
             if is_django_version_2_or_higher():
                 if field.is_relation and field.is_cached(self):
                     fields[field.name] = field.get_cached_value(self)
-            elif field.remote_field:
-                descriptor = self.__class__.__dict__[field.name]
-                if hasattr(self, descriptor.cache_name):
-                    fields[field.name] = getattr(self, descriptor.cache_name, None)
+            else:
+                if field.remote_field:
+                    descriptor = self.__class__.__dict__[field.name]
+                    if hasattr(self, descriptor.cache_name):
+                        fields[field.name] = getattr(self, descriptor.cache_name, None)
 
         return fields
 
