@@ -147,15 +147,16 @@ class ChangesMixinBeforeAndCurrentTestCase(TestCase):
             show the ID change.
         """
         user = User.objects.create()
+        user2 = User.objects.create()
         article = Article.objects.create(title='Hello World', user=user)
 
-        Article.objects.filter(id=article.id).update(user_id=100)
+        Article.objects.filter(id=article.id).update(user_id=user2.pk)
         article.refresh_from_db()
 
         self.assertDictEqual({'id': None, 'title': 'Hello World', 'user_id': user.id, 'user': user}, article.old_state())
         self.assertDictEqual({'id': article.pk, 'title': 'Hello World', 'user_id': user.id, 'user': user}, article.previous_state())
-        self.assertDictEqual({'id': article.pk, 'title': 'Hello World', 'user_id': 100}, article.current_state())
-        self.assertDictEqual({'user_id': (user.id, 100)}, article.changes())
+        self.assertDictEqual({'id': article.pk, 'title': 'Hello World', 'user_id': user2.pk}, article.current_state())
+        self.assertDictEqual({'user_id': (user.id, user2.pk)}, article.changes())
 
     def test_foreign_key_id(self):
         me = User()
