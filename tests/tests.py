@@ -136,6 +136,27 @@ class ChangesMixinBeforeAndCurrentTestCase(TestCase):
         self.assertDictContainsSubset({'id': article.pk, 'user': you}, article.previous_state())
         self.assertDictContainsSubset({'id': article.pk, 'user': you}, article.current_state())
 
+
+    def test_foreign_key_model_in_previous_state_but_not_current_state(self):
+        """
+        GIVEN a user and article
+        WHEN the article's foreign key ID is updated and the model is refreshed
+            from the database
+        THEN the current state should *not* have the user model in its state because
+            it isn't in the model's field cache and therefore, the changes should only
+            show the ID change.
+        """
+        user = User.objects.create()
+        article = Article.objects.create(title='Hello World', user=user)
+
+        Article.objects.filter(id=article.id).update(user_id=100)
+        article.refresh_from_db()
+
+        self.assertDictEqual({'id': None, 'title': 'Hello World', 'user_id': user.id, 'user': user}, article.old_state())
+        self.assertDictEqual({'id': article.pk, 'title': 'Hello World', 'user_id': user.id, 'user': user}, article.previous_state())
+        self.assertDictEqual({'id': article.pk, 'title': 'Hello World', 'user_id': 100}, article.current_state())
+        self.assertDictEqual({'user_id': (user.id, 100)}, article.changes())
+
     def test_foreign_key_id(self):
         me = User()
         me.save()
