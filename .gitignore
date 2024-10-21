@@ -10,3 +10,5 @@ tests/__init__.pyc
 tests/__pycache__/
 tests/models.pyc
 tests/tests.pyc
+/.venv
+/build
