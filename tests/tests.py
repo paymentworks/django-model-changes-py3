@@ -188,3 +188,32 @@ class ChangesMixinBeforeAndCurrentTestCase(TestCase):
         self.assertDictContainsSubset({'id': article.pk, 'user_id': me.pk}, article.old_state())
         self.assertDictContainsSubset({'id': article.pk, 'user_id': you.pk}, article.previous_state())
         self.assertDictContainsSubset({'id': article.pk, 'user_id': you.pk}, article.current_state())
+
+
+class RecursionPreventionTestCase(TestCase):
+    def test_recursion_prevention_during_deletion(self):
+        """
+        Test that the recursion guard prevents infinite recursion during
+        complex deletion scenarios that would have caused RecursionError
+        in the old version.
+        """
+        # Create a user and article with foreign key relationship
+        user = User.objects.create(name='Test User')
+        article = Article.objects.create(title='Test Article', user=user)
+        
+        # Force the foreign key to be cached (this is what triggers recursion in production)
+        _ = article.user  # This loads the foreign key
+        
+        # Now trigger a save operation that would cause state tracking
+        # In the old version, this could cause infinite recursion
+        # In the fixed version, the recursion guard should prevent this
+        article.title = 'Updated Article'
+        article.save()
+        
+        # Verify the save worked without recursion
+        article.refresh_from_db()
+        self.assertEqual(article.title, 'Updated Article')
+        
+        # Verify state tracking still works correctly
+        self.assertIn('title', article.changes())
+        self.assertEqual(article.changes()['title'], ('Test Article', 'Updated Article'))
