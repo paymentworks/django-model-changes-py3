@@ -1,7 +1,19 @@
 from django.db.models import signals
 import django
+import threading
 
 from .signals import post_change
+
+# Thread-local storage for recursion prevention
+_state_tracking_local = threading.local()
+
+def _is_state_tracking():
+    """Check if state tracking is currently active to prevent recursion."""
+    return getattr(_state_tracking_local, 'tracking', False)
+
+def _set_state_tracking(value):
+    """Set the state tracking flag to prevent recursion."""
+    _state_tracking_local.tracking = value
 
 SAVE = 0
 DELETE = 1
@@ -78,23 +90,32 @@ class ChangesMixin(object):
         )
 
     def _save_state(self, new_instance=False, event_type='save'):
-        # Pipe the pk on deletes so that a correct snapshot of the current
-        # state can be taken.
-        if event_type == DELETE:
-            self.pk = None
+        # Prevent recursion by checking if state tracking is already active
+        if _is_state_tracking():
+            return
+        
+        try:
+            _set_state_tracking(True)
+            
+            # Pipe the pk on deletes so that a correct snapshot of the current
+            # state can be taken.
+            if event_type == DELETE:
+                self.pk = None
 
-        # Save current state.
-        self._states.append(self.current_state())
+            # Save current state.
+            self._states.append(self.current_state())
 
-        # Drop the previous old state
-        # _states == [previous old state, old state, previous state]
-        #             ^^^^^^^^^^^^^^^^^^
-        if len(self._states) > 2:
-            self._states.pop(0)
+            # Drop the previous old state
+            # _states == [previous old state, old state, previous state]
+            #             ^^^^^^^^^^^^^^^^^^
+            if len(self._states) > 2:
+                self._states.pop(0)
 
-        # Send post_change signal unless this is a new instance
-        if not new_instance:
-            post_change.send(sender=self.__class__, instance=self)
+            # Send post_change signal unless this is a new instance
+            if not new_instance:
+                post_change.send(sender=self.__class__, instance=self)
+        finally:
+            _set_state_tracking(False)
 
     def _instance_from_state(self, state):
         """
