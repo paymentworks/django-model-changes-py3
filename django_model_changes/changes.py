@@ -1,24 +1,11 @@
 from django.db.models import signals
 import django
-import threading
 
 from .signals import post_change
 
 SAVE = 0
 DELETE = 1
 
-# Thread-local storage to track recursion during state tracking
-# This prevents infinite loops when django-model-changes tries to track state
-# during model deletion operations that trigger additional state tracking
-_state_tracking_local = threading.local()
-
-def _is_state_tracking():
-    """Check if we're currently in the middle of state tracking operations."""
-    return getattr(_state_tracking_local, 'tracking', False)
-
-def _set_state_tracking(flag):
-    """Set the state tracking flag."""
-    _state_tracking_local.tracking = flag
 
 class ChangesMixin(object):
     """
@@ -91,32 +78,23 @@ class ChangesMixin(object):
         )
 
     def _save_state(self, new_instance=False, event_type='save'):
-        # Prevent recursion during state tracking
-        if _is_state_tracking():
-            return
-        
-        try:
-            _set_state_tracking(True)
-            
-            # Pipe the pk on deletes so that a correct snapshot of the current
-            # state can be taken.
-            if event_type == DELETE:
-                self.pk = None
+        # Pipe the pk on deletes so that a correct snapshot of the current
+        # state can be taken.
+        if event_type == DELETE:
+            self.pk = None
 
-            # Save current state.
-            self._states.append(self.current_state())
+        # Save current state.
+        self._states.append(self.current_state())
 
-            # Drop the previous old state
-            # _states == [previous old state, old state, previous state]
-            #             ^^^^^^^^^^^^^^^^^^
-            if len(self._states) > 2:
-                self._states.pop(0)
+        # Drop the previous old state
+        # _states == [previous old state, old state, previous state]
+        #             ^^^^^^^^^^^^^^^^^^
+        if len(self._states) > 2:
+            self._states.pop(0)
 
-            # Send post_change signal unless this is a new instance
-            if not new_instance:
-                post_change.send(sender=self.__class__, instance=self)
-        finally:
-            _set_state_tracking(False)
+        # Send post_change signal unless this is a new instance
+        if not new_instance:
+            post_change.send(sender=self.__class__, instance=self)
 
     def _instance_from_state(self, state):
         """
@@ -139,17 +117,15 @@ class ChangesMixin(object):
 
             # Foreign fields require special care because we don't want to trigger a database query when the field is
             # not yet cached.
-            # Skip foreign key access during state tracking to prevent recursion
-            if not _is_state_tracking():
-                # TODO remove is_django_version_2_or_higher() after monolith is upgraded
-                if is_django_version_2_or_higher():
-                    if field.is_relation and field.is_cached(self):
-                        fields[field.name] = field.get_cached_value(self)
-                else:
-                    if field.remote_field:
-                        descriptor = self.__class__.__dict__[field.name]
-                        if hasattr(self, descriptor.cache_name):
-                            fields[field.name] = getattr(self, descriptor.cache_name, None)
+            # TODO remove is_django_version_2_or_higher() after monolith is upgraded
+            if is_django_version_2_or_higher():
+                if field.is_relation and field.is_cached(self):
+                    fields[field.name] = field.get_cached_value(self)
+            else:
+                if field.remote_field:
+                    descriptor = self.__class__.__dict__[field.name]
+                    if hasattr(self, descriptor.cache_name):
+                        fields[field.name] = getattr(self, descriptor.cache_name, None)
 
         return fields
 
