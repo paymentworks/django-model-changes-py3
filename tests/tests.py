@@ -188,3 +188,20 @@ class ChangesMixinBeforeAndCurrentTestCase(TestCase):
         self.assertDictContainsSubset({'id': article.pk, 'user_id': me.pk}, article.old_state())
         self.assertDictContainsSubset({'id': article.pk, 'user_id': you.pk}, article.previous_state())
         self.assertDictContainsSubset({'id': article.pk, 'user_id': you.pk}, article.current_state())
+
+    def test_recursion_prevention_during_deletion(self):
+        """
+        Test that the recursion guard prevents infinite loops during deletion.
+        This simulates the scenario where model deletion triggers additional
+        state tracking operations that could cause recursion.
+        """
+        user = User.objects.create(name='Test User')
+        article = Article.objects.create(title='Test Article', user=user)
+        
+        # This should not cause recursion, even if the deletion process
+        # triggers additional state tracking operations
+        article.delete()
+        
+        # Verify the deletion worked and didn't cause recursion
+        self.assertFalse(Article.objects.filter(id=article.id).exists())
+        self.assertTrue(User.objects.filter(id=user.id).exists())  # User should still exist
