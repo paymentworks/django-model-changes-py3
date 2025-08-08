@@ -136,19 +136,17 @@ class ChangesMixin(object):
             # available on the instance.
             fields[field.attname] = getattr(self, field.attname, None)
 
-            # Skip foreign key access during state tracking to prevent recursion
-            if not _is_state_tracking():
-                # Foreign fields require special care because we don't want to trigger a database query when the field is
-                # not yet cached.
-                # TODO remove is_django_version_2_or_higher() after monolith is upgraded
-                if is_django_version_2_or_higher():
-                    if field.is_relation and field.is_cached(self):
-                        fields[field.name] = field.get_cached_value(self)
-                else:
-                    if field.remote_field:
-                        descriptor = self.__class__.__dict__[field.name]
-                        if hasattr(self, descriptor.cache_name):
-                            fields[field.name] = getattr(self, descriptor.cache_name, None)
+            # Foreign fields require special care because we don't want to trigger a database query when the field is
+            # not yet cached.
+            # TODO remove is_django_version_2_or_higher() after monolith is upgraded
+            if is_django_version_2_or_higher():
+                if field.is_relation and field.is_cached(self):
+                    fields[field.name] = field.get_cached_value(self)
+            else:
+                if field.remote_field:
+                    descriptor = self.__class__.__dict__[field.name]
+                    if hasattr(self, descriptor.cache_name):
+                        fields[field.name] = getattr(self, descriptor.cache_name, None)
 
         return fields
 
