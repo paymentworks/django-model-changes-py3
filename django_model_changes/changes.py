@@ -111,22 +111,14 @@ class ChangesMixin(object):
         """
         fields = {}
         for field in self._meta.local_fields:
-            # It's always safe to access the field attribute name, it refers to simple types that are immediately
-            # available on the instance.
-            fields[field.attname] = getattr(self, field.attname, None)
-
-            # Foreign fields require special care because we don't want to trigger a database query when the field is
-            # not yet cached.
-            # TODO remove is_django_version_2_or_higher() after monolith is upgraded
-            if is_django_version_2_or_higher():
-                if field.is_relation and field.is_cached(self):
-                    fields[field.name] = field.get_cached_value(self)
+            # Only access attributes already present on the object. Otherwise we might go out to the
+            # database which will result in infinite recursion trying to setup this object.
+            if field.attname in self.__dict__:
+                fields[field.attname] = self.__dict__[field.attname]
             else:
-                if field.remote_field:
-                    descriptor = self.__class__.__dict__[field.name]
-                    if hasattr(self, descriptor.cache_name):
-                        fields[field.name] = getattr(self, descriptor.cache_name, None)
-
+                fields[field.attname] = None
+            if field.is_relation and field.is_cached(self):
+                fields[field.name] = field.get_cached_value(self)
         return fields
 
     def previous_state(self):
