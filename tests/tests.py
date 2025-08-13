@@ -190,7 +190,7 @@ class ChangesMixinBeforeAndCurrentTestCase(TestCase):
         self.assertDictContainsSubset({'id': article.pk, 'user_id': you.pk}, article.current_state())
 
 
-    def test_deffered_fields_no_infinite_recursion(self):
+    def test_deferred_fields_no_infinite_recursion(self):
         user = User()
         user.save()
         User.objects.only('id').get(id=user.id)
