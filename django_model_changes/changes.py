@@ -1,5 +1,4 @@
 from django.db.models import signals
-import django
 
 from .signals import post_change
 
@@ -225,8 +224,3 @@ def _post_save(sender, instance, **kwargs):
 
 def _post_delete(sender, instance, **kwargs):
     instance._save_state(new_instance=False, event_type=DELETE)
-
-def is_django_version_2_or_higher():
-    version = django.get_version()
-    major_version = int(version.split('.')[0])
-    return major_version >= 2
