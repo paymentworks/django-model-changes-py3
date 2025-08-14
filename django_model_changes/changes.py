@@ -109,13 +109,21 @@ class ChangesMixin(object):
         Returns a ``field -> value`` dict of the current state of the instance.
         """
         fields = {}
+        deferred_fields = self.get_deferred_fields()
+
         for field in self._meta.local_fields:
-            # Only access attributes already present on the object. Otherwise we might go out to the
-            # database which will result in infinite recursion trying to setup this object.
-            if field.attname in self.__dict__:
-                fields[field.attname] = self.__dict__[field.attname]
+            if field.attname in deferred_fields:
+                # Skip deferred attributes. getattr below hits the db
+                # for deferred attributes. When the model is
+                # constructed from the result of that call some of the
+                # other attributes on the class may also be deferred.
+                # That then requires another call to the db. In the
+                # model constructed from that result the original
+                # deferred values are still deferred so when we call
+                # getattr on them we recurse infinitely from there.
+                continue
             else:
-                fields[field.attname] = None
+                fields[field.attname] = getattr(self, field.attname, None)
             if field.is_relation and field.is_cached(self):
                 fields[field.name] = field.get_cached_value(self)
         return fields
