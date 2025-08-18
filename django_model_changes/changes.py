@@ -1,5 +1,4 @@
 from django.db.models import signals
-import django
 
 from .signals import post_change
 
@@ -110,23 +109,23 @@ class ChangesMixin(object):
         Returns a ``field -> value`` dict of the current state of the instance.
         """
         fields = {}
+        deferred_fields = self.get_deferred_fields()
+
         for field in self._meta.local_fields:
-            # It's always safe to access the field attribute name, it refers to simple types that are immediately
-            # available on the instance.
-            fields[field.attname] = getattr(self, field.attname, None)
-
-            # Foreign fields require special care because we don't want to trigger a database query when the field is
-            # not yet cached.
-            # TODO remove is_django_version_2_or_higher() after monolith is upgraded
-            if is_django_version_2_or_higher():
-                if field.is_relation and field.is_cached(self):
-                    fields[field.name] = field.get_cached_value(self)
+            if field.attname in deferred_fields:
+                # Skip deferred attributes. getattr below hits the db
+                # for deferred attributes. When the model is
+                # constructed from the result of that call some of the
+                # other attributes on the class may also be deferred.
+                # That then requires another call to the db. In the
+                # model constructed from that result the original
+                # deferred values are still deferred so when we call
+                # getattr on them we recurse infinitely from there.
+                continue
             else:
-                if field.remote_field:
-                    descriptor = self.__class__.__dict__[field.name]
-                    if hasattr(self, descriptor.cache_name):
-                        fields[field.name] = getattr(self, descriptor.cache_name, None)
-
+                fields[field.attname] = getattr(self, field.attname, None)
+            if field.is_relation and field.is_cached(self):
+                fields[field.name] = field.get_cached_value(self)
         return fields
 
     def previous_state(self):
@@ -233,8 +232,3 @@ def _post_save(sender, instance, **kwargs):
 
 def _post_delete(sender, instance, **kwargs):
     instance._save_state(new_instance=False, event_type=DELETE)
-
-def is_django_version_2_or_higher():
-    version = django.get_version()
-    major_version = int(version.split('.')[0])
-    return major_version >= 2

@@ -8,8 +8,8 @@ jobs:
     strategy:
       matrix:
         versions: [
-          {python: '3.7', django: '1.11.29'},
           {python: '3.7', django: '2.2.28'},
+          {python: '3.7', django: '3.2.25'},
         ]
     steps:
       - name: Checkout source code
