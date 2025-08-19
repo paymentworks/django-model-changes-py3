@@ -25,7 +25,7 @@ def extract_version_from_setup_py(file_path="setup.py"):
 
     except Exception as e:
         print(f"Error reading {file_path}: {e}", file=sys.stderr)
-        return "0.0.1"
+        return "0.0.0"
 
 
 if __name__ == "__main__":
