@@ -1,0 +1,67 @@
+name: Auto Version Tag
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  auto-version-tag:
+    permissions:
+      contents: write
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for tagging
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      
+      - name: Extract version from setup.py
+        id: extract-version
+        run: |
+          # Extract version from setup.py using the dedicated script
+          VERSION=$(python .github/scripts/extract_version.py)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+      
+      - name: Check if tag already exists
+        id: check-tag
+        run: |
+          VERSION="${{ steps.extract-version.outputs.version }}"
+          if git tag -l "v$VERSION" | grep -q "v$VERSION"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag v$VERSION already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag v$VERSION does not exist"
+          fi
+      
+      - name: Create and push tag
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.extract-version.outputs.version }}"
+          TAG_NAME="v$VERSION"
+          
+          # Configure git for tagging
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Create annotated tag
+          git tag -a "$TAG_NAME" -m "Release version $VERSION"
+          
+          # Push the tag
+          git push origin "$TAG_NAME"
+          
+          echo "Successfully created and pushed tag: $TAG_NAME"
+      
+      - name: Skip tag creation
+        if: steps.check-tag.outputs.exists == 'true'
+        run: |
+          echo "Tag v${{ steps.extract-version.outputs.version }} already exists, skipping creation"
