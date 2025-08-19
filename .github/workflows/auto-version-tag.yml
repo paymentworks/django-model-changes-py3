@@ -49,14 +49,9 @@ jobs:
           VERSION="${{ steps.extract-version.outputs.version }}"
           TAG_NAME="$VERSION"
           
-          # Configure git for tagging
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
-          # Create annotated tag
           git tag -a "$TAG_NAME" -m "Release version $VERSION"
-          
-          # Push the tag
           git push origin "$TAG_NAME"
           
           echo "Successfully created and pushed tag: $TAG_NAME"
