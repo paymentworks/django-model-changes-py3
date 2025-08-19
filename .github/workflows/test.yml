@@ -24,3 +24,4 @@ jobs:
           pip install django==${{ matrix.versions.django }}
       - name: Run tests
         run: python runtests.py
+
