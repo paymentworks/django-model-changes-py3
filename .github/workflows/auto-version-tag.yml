@@ -35,19 +35,19 @@ jobs:
         id: check-tag
         run: |
           VERSION="${{ steps.extract-version.outputs.version }}"
-          if git tag -l "v$VERSION" | grep -q "v$VERSION"; then
+          if git tag -l "$VERSION" | grep -q "$VERSION"; then
             echo "exists=true" >> $GITHUB_OUTPUT
-            echo "Tag v$VERSION already exists"
+            echo "Tag $VERSION already exists"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Tag v$VERSION does not exist"
+            echo "Tag $VERSION does not exist"
           fi
       
       - name: Create and push tag
         if: steps.check-tag.outputs.exists == 'false'
         run: |
           VERSION="${{ steps.extract-version.outputs.version }}"
-          TAG_NAME="v$VERSION"
+          TAG_NAME="$VERSION"
           
           # Configure git for tagging
           git config --local user.email "action@github.com"
@@ -64,4 +64,4 @@ jobs:
       - name: Skip tag creation
         if: steps.check-tag.outputs.exists == 'true'
         run: |
-          echo "Tag v${{ steps.extract-version.outputs.version }} already exists, skipping creation"
+          echo "Tag ${{ steps.extract-version.outputs.version }} already exists, skipping creation"
