@@ -36,7 +36,7 @@ jobs:
           
           if git tag -l "$VERSION" | grep -q "$VERSION"; then
             echo "Tag $VERSION already exists"
-            raise "Tag $VERSION already exists, skipping tag creation."  
+            exit 1  
           fi
           
           git config --local user.email "action@github.com"
