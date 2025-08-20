@@ -1,0 +1,44 @@
+name: Check Version Tag
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  check-version-tag:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      
+      - name: Install setuptools
+        run: pip install setuptools
+      
+      - name: Extract version from setup.py
+        id: extract-version
+        run: |
+          VERSION=$(python setup.py --version)
+          echo "Extracted version: $VERSION"
+          
+          if git tag -l "$TAG_NAME" | grep -q "$TAG_NAME"; then
+            echo "❌ ERROR: Version $VERSION already has tag $TAG_NAME"
+            echo "Please bump the version number in setup.py before merging this PR"
+            echo ""
+            echo "To fix this:"
+            echo "1. Update the version in setup.py to a new version"
+            echo "2. Commit and push the change"
+            echo "3. The PR will automatically re-check"
+            exit 1
+          else
+            echo "✅ Version $VERSION is available for tagging"
+            echo "This PR can be merged safely"
+          fi
