@@ -1,0 +1,47 @@
+name: Auto Version Tag
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  auto-version-tag:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: 'true'
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # required for invoking setup.py below
+      - name: Install setuptools
+        run: pip install setuptools
+      
+      - name: Detect version from setup.py and create tags
+        id: detect-version-create-tags
+        run: |
+          VERSION=$(python setup.py --version)
+          echo "Detected version: $VERSION"
+          
+          if git tag -l "$VERSION" | grep -q "$VERSION"; then
+            echo "Tag $VERSION already exists"
+            exit 1  
+          fi
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a "$VERSION" -m "Release version $VERSION"
+          git push origin "$VERSION"
+          
+          echo "Successfully created and pushed tag: $VERSION"

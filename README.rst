@@ -6,6 +6,14 @@ PYTHON 3 FORK OF `django-model-changes <https://github.com/kajic/django-model-ch
 
 *django-model-changes* allows you to track the state and changes of a model instance:
 
+Making changes to this package
+-----------
+1. Create a PR as you normally would, off of the master branch
+2. Update the version number in `setup.py`
+3. Upon merging of your PR, a GitHub Action will run which creates a new tag from the version number you created in
+   `setup.py` and pushes it to the repository.
+4. Create a monolith branch with the updated version number in the requirements/base.txt file.
+
 Quick start
 -----------
 
