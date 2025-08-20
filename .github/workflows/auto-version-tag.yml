@@ -23,6 +23,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+
+      # required for invoking setup.py below
+      - name: Install setuptools
+        run: pip install setuptools
       
       - name: Detect version from setup.py and create tags
         id: detect-version-create-tags
