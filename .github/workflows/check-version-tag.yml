@@ -29,8 +29,8 @@ jobs:
           VERSION=$(python setup.py --version)
           echo "Extracted version: $VERSION"
           
-          if git tag -l "$TAG_NAME" | grep -q "$TAG_NAME"; then
-            echo "❌ ERROR: Version $VERSION already has tag $TAG_NAME"
+          if git tag -l "$VERSION" | grep -q "$VERSION"; then
+            echo "❌ ERROR: Version $VERSION already has tag $VERSION"
             echo "Please bump the version number in setup.py before merging this PR"
             echo ""
             echo "To fix this:"
