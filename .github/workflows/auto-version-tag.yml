@@ -16,38 +16,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # Fetch full history for tagging
+          fetch-depth: 0
+          fetch-tags: 'true'
       
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       
-      - name: Extract version from setup.py
-        id: extract-version
+      - name: Detect version from setup.py and create tags
+        id: detect-version-create-tags
         run: |
-          # Extract version from setup.py using the dedicated script
-          VERSION=$(python .github/scripts/extract_version_from_setup_file.py)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION"
-      
-      - name: Check if tag already exists
-        id: check-tag
-        run: |
-          VERSION="${{ steps.extract-version.outputs.version }}"
+          VERSION=$(python setup.py --version)
+          echo "Detected version: $VERSION"
+          
           if git tag -l "$VERSION" | grep -q "$VERSION"; then
-            echo "exists=true" >> $GITHUB_OUTPUT
             echo "Tag $VERSION already exists"
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Tag $VERSION does not exist"
+            raise "Tag $VERSION already exists, skipping tag creation."  
           fi
-      
-      - name: Create and push tag
-        if: steps.check-tag.outputs.exists == 'false'
-        run: |
-          VERSION="${{ steps.extract-version.outputs.version }}"
-          TAG_NAME="$VERSION"
           
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -55,8 +41,3 @@ jobs:
           git push origin "$TAG_NAME"
           
           echo "Successfully created and pushed tag: $TAG_NAME"
-      
-      - name: Skip tag creation
-        if: steps.check-tag.outputs.exists == 'true'
-        run: |
-          echo "Tag ${{ steps.extract-version.outputs.version }} already exists, skipping creation"
