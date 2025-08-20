@@ -41,7 +41,7 @@ jobs:
           
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git tag -a "$TAG_NAME" -m "Release version $VERSION"
-          git push origin "$TAG_NAME"
+          git tag -a "$VERSION" -m "Release version $VERSION"
+          git push origin "$VERSION"
           
-          echo "Successfully created and pushed tag: $TAG_NAME"
+          echo "Successfully created and pushed tag: $VERSION"
