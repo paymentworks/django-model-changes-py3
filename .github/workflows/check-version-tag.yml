@@ -32,14 +32,14 @@ jobs:
           echo "Extracted version: $VERSION"
           
           if git tag -l "$VERSION" | grep -q "$VERSION"; then
-            echo "❌ ERROR: Version $VERSION already has tag $VERSION"
+            echo "❌ ERROR: A tag already exists for version: $VERSION."
             echo "Please bump the version number in setup.py before merging this PR"
             echo ""
             echo "To fix this:"
             echo " 1. Update the version in setup.py to a new version"
             echo " 2. Commit and push the change"
             echo " 3. The PR will automatically re-check"
-            exit 1
+            raise "A tag already exists for version: $VERSION."
           else
             echo "✅ Version $VERSION is available for tagging"
             echo "This PR can be merged safely"
