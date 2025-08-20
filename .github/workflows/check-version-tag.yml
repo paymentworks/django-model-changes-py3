@@ -34,9 +34,9 @@ jobs:
             echo "Please bump the version number in setup.py before merging this PR"
             echo ""
             echo "To fix this:"
-            echo "1. Update the version in setup.py to a new version"
-            echo "2. Commit and push the change"
-            echo "3. The PR will automatically re-check"
+            echo " 1. Update the version in setup.py to a new version"
+            echo " 2. Commit and push the change"
+            echo " 3. The PR will automatically re-check"
             exit 1
           else
             echo "✅ Version $VERSION is available for tagging"
