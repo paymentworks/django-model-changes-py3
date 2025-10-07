@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python: ["3.7.16", "3.8.20"]
+        python: ["3.7.16", "3.8.18"]
         django: ["3.2.25"]
     steps:
       - name: Checkout source code
