@@ -67,7 +67,6 @@ class ChangesMixin(object):
         self._states = []
         self._save_state(new_instance=True)
 
-        # DAT-2870 added `weak=False` to fix a memory leak issue (more info in ticket)
         signals.post_save.connect(
             _post_save, sender=self.__class__, weak=False,
             dispatch_uid='django-changes-%s' % self.__class__.__name__

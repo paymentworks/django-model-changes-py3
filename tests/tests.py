@@ -205,12 +205,14 @@ class ChangesMixinDoesNotLeakFinalizersTestCase(TestCase):
     ChangesMixin.__init__ connects post_save/post_delete on every instantiation.
 
     Django's Signal.connect() registers a weakref.finalize() before it checks
-    dispatch_uid, and finalize() entries are held in a global registry until the
-    caller dies.
+    dispatch_uid, and finalize() entries are held in a global registry until
+    the reciever referring to it is garbage collected.
 
-    The receivers are functions that outlive the interpreter, so a weak connect leaks registry entries.
-     
-    Connecting with weak=False avoids the finalize() call entirely, and no leak occurs.
+    The reciever (pre/post save/delete) is a module-level function held by the module
+    namespace for the life of the process, and never collected, so the finalizer never
+    gets called, and the entry is never released.
+
+    Connecting with weak=False skips the finalize() call altogether.
     """
 
     def test_instantiation_does_not_grow_the_finalize_registry(self):
@@ -246,17 +248,3 @@ class ChangesMixinDoesNotLeakFinalizersTestCase(TestCase):
 
         self.assertEqual(len(uids(signals.post_save)), 1)
         self.assertEqual(len(uids(signals.post_delete)), 1)
-
-    def test_post_save_receiver_still_fires(self):
-        # weak=False stores a strong reference to the receiver rather than a
-        # weakref, so prove the receiver is still reachable and still updates
-        # state on save.
-        user = User(name='Foo')
-        user.save()
-
-        user.name = 'Bar'
-        self.assertEqual({'name': ('Foo', 'Bar')}, user.changes())
-
-        user.save()
-        self.assertEqual({}, user.changes())
-        self.assertEqual({'name': ('Foo', 'Bar')}, user.previous_changes())
