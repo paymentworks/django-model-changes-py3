@@ -1,3 +1,7 @@
+import gc
+import weakref
+
+from django.db.models import signals
 from django.test import TestCase
 
 from .models import User, Article
@@ -194,3 +198,53 @@ class ChangesMixinBeforeAndCurrentTestCase(TestCase):
         user = User()
         user.save()
         User.objects.only('id').get(id=user.id)
+
+
+class ChangesMixinDoesNotLeakFinalizersTestCase(TestCase):
+    """
+    ChangesMixin.__init__ connects post_save/post_delete on every instantiation.
+
+    Django's Signal.connect() registers a weakref.finalize() before it checks
+    dispatch_uid, and finalize() entries are held in a global registry until
+    the reciever referring to it is garbage collected.
+
+    The reciever (pre/post save/delete) is a module-level function held by the module
+    namespace for the life of the process, and never collected, so the finalizer never
+    gets called, and the entry is never released.
+
+    Connecting with weak=False skips the finalize() call altogether.
+    """
+
+    def test_instantiation_does_not_grow_the_finalize_registry(self):
+        # Warm up so any one-time setup is not counted below.
+        for _ in range(10):
+            User()
+
+        gc.collect()
+        before = len(weakref.finalize._registry)
+
+        for _ in range(500):
+            User()
+
+        gc.collect()
+        growth = len(weakref.finalize._registry) - before
+
+        self.assertEqual(
+            growth, 0,
+            'Instantiating 500 models added %d weakref.finalize entries that will '
+            'never be evicted. ChangesMixin must connect its signals with '
+            'weak=False.' % growth
+        )
+
+    def test_receivers_are_still_connected_exactly_once(self):
+        # The leak fix must not change dispatch behaviour: dispatch_uid should
+        # still collapse every instantiation down to a single receiver per model.
+        def uids(signal):
+            return [key for key, _ in signal.receivers
+                    if key[0] == 'django-changes-User']
+
+        for _ in range(50):
+            User()
+
+        self.assertEqual(len(uids(signals.post_save)), 1)
+        self.assertEqual(len(uids(signals.post_delete)), 1)
